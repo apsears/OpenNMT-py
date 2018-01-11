@@ -336,6 +336,8 @@ def train_opts(parser):
                        help="Print stats at this interval.")
     group.add_argument('-exp_host', type=str, default="",
                        help="Send logs to this crayon server.")
+    group.add_argument('-port', type=int, default=8889,
+                       help="Crayon server data port.")
     group.add_argument('-exp', type=str, default="",
                        help="Name of the experiment for logging.")
 
