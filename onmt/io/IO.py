@@ -90,6 +90,28 @@ def merge_vocabs(vocabs, vocab_size=None):
                                  specials=[PAD_WORD, BOS_WORD, EOS_WORD],
                                  max_size=vocab_size)
 
+def filter_u(vocab, vocab_size=None):
+    """
+    Merge individual vocabularies (assumed to be generated from disjoint
+    documents) into a larger vocabulary.
+
+    Args:
+        vocabs: `torchtext.vocab.Vocab` vocabularies to be merged
+        vocab_size: `int` the final vocabulary size. `None` for no limit.
+    Return:
+        `torchtext.vocab.Vocab`
+    """
+
+    filtered_freqs = Counter(vocab.freqs) # sum([vocab.freqs], Counter())
+    for word in list(filtered_freqs):
+        if 'u' in word:
+            del filtered_freqs[word]
+    return torchtext.vocab.Vocab(filtered_freqs,
+                                 specials=[PAD_WORD, BOS_WORD, EOS_WORD],
+                                 max_size=vocab_size)
+
+
+
 
 def get_num_features(data_type, corpus_file, side):
     """
@@ -256,6 +278,11 @@ def build_vocab(train_datasets, data_type, share_vocab,
                 vocab_size=src_vocab_size)
             fields["src"].vocab = merged_vocab
             fields["tgt"].vocab = merged_vocab
+
+        filter_target = True
+        if filter_target:
+            print('Filtering charactuer "u" from target vocabulary')
+            fields["tgt"].vocab = filter_u(fields["tgt"].vocab,vocab_size=tgt_vocab_size)
 
     return fields
 
