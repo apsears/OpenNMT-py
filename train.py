@@ -63,7 +63,7 @@ if len(opt.gpuid) > 1:
 # Set up the Crayon logging server.
 if opt.exp_host != "":
     from pycrayon import CrayonClient
-    cc = CrayonClient(hostname=opt.exp_host)
+    cc = CrayonClient(hostname=opt.exp_host, port=opt.port)
 
     experiments = cc.get_experiment_names()
     print(experiments)
