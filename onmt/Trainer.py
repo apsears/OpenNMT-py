@@ -99,7 +99,7 @@ class Trainer(object):
 
     def __init__(self, model, train_iter, valid_iter,
                  train_loss, valid_loss, optim,
-                 trunc_size=0, shard_size=32, data_type='text'):
+                 trunc_size=0, shard_size=32, data_type='text', translator=None):
         # Basic attributes.
         self.model = model
         self.train_iter = train_iter
@@ -110,6 +110,7 @@ class Trainer(object):
         self.trunc_size = trunc_size
         self.shard_size = shard_size
         self.data_type = data_type
+        self.translator = translator
 
         # Set model in training mode.
         self.model.train()
@@ -147,8 +148,14 @@ class Trainer(object):
 
                 # 2. F-prop all but generator.
                 self.model.zero_grad()
-                outputs, attns, dec_state = \
+                intermed, attns, dec_state = \
                     self.model(src, tgt, src_lengths, dec_state)
+
+                if self.translator is not None:
+                    outputs = self.translator(intermed)
+                else:
+                    outputs = intermed
+
 
                 # 3. Compute loss in shards for memory efficiency.
                 batch_stats = self.train_loss.sharded_compute_loss(

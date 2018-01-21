@@ -156,7 +156,7 @@ def make_loss_compute(model, tgt_vocab, dataset, opt):
 
 
 def train_model(model, train_dataset, valid_dataset,
-                fields, optim, model_opt):
+                fields, optim, model_opt, translator=None):
 
     train_iter = make_train_data_iter(train_dataset, opt)
     valid_iter = make_valid_data_iter(valid_dataset, opt)
@@ -172,7 +172,7 @@ def train_model(model, train_dataset, valid_dataset,
 
     trainer = onmt.Trainer(model, train_iter, valid_iter,
                            train_loss, valid_loss, optim,
-                           trunc_size, shard_size, data_type)
+                           trunc_size, shard_size, data_type, translator)
 
     for epoch in range(opt.start_epoch, opt.epochs + 1):
         print('')
@@ -295,6 +295,23 @@ def build_model(model_opt, opt, fields, checkpoint):
 
     return model
 
+# Build a static translator
+def build_translator(opt, model, fields, model_opt):
+
+    scorer = onmt.translate.GNMTGlobalScorer(opt.alpha, opt.beta)
+    translator = onmt.translate.Translator(model, fields,
+                                           beam_size=opt.beam_size,
+                                           n_best=opt.n_best,
+                                           global_scorer=scorer,
+                                           max_length=opt.max_length,
+                                           copy_attn=model_opt.copy_attn,
+                                           cuda=opt.cuda,
+                                           beam_trace=opt.dump_beam != "",
+                                           min_length=opt.min_length)
+    for param in translator.parameters():
+        param.requires_grad = False
+    return translator, scorer
+
 
 def build_optim(model, checkpoint):
     if opt.train_from:
@@ -353,8 +370,15 @@ def main():
     # Build optimizer.
     optim = build_optim(model, checkpoint)
 
+    # Build static translator. [not all correct?]
+    dummy_parser = argparse.ArgumentParser(description='train.py')
+    dummy_opt = dummy_parser.parse_known_args([])[0]
+    tfields, tmodel, model_opt = \
+        onmt.ModelConstructor.load_test_model(opt, dummy_opt.__dict__)
+    translator = build_translator(opt, tmodel, tfields, model_opt)
+
     # Do training.
-    train_model(model, train_dataset, valid_dataset, fields, optim, model_opt)
+    train_model(model, train_dataset, valid_dataset, fields, optim, model_opt, translator)
 
 
 if __name__ == "__main__":
