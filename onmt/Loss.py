@@ -95,7 +95,7 @@ class LossComputeBase(nn.Module):
         range in the decoder output sequence to back propagate in.
         Range is from `(cur_trunc, cur_trunc + trunc_size)`.
 
-        Note harding is an exact efficiency trick to relieve memory
+        Note sharding is an exact efficiency trick to relieve memory
         required for the generation buffers. Truncation is an
         approximate efficiency trick to relieve the memory required
         in the RNN buffers.
