@@ -249,6 +249,10 @@ def train_opts(parser):
                        action='store_true',
                        help="Fix word embeddings on the encoder side.")
 
+    group = parser.add_argument_group('Extensions')
+    group.add_argument('-bolt_model', type=str, default="",
+                       help='Model to bolt onto Encoder-Decoder')
+
     # Optimization options
     group = parser.add_argument_group('Optimization- Type')
     group.add_argument('-batch_size', type=int, default=64,
