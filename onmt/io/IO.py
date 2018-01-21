@@ -279,7 +279,7 @@ def build_vocab(train_datasets, data_type, share_vocab,
             fields["src"].vocab = merged_vocab
             fields["tgt"].vocab = merged_vocab
 
-        filter_target = True
+        filter_target = False
         if filter_target:
             print('Filtering charactuer "u" from target vocabulary')
             fields["tgt"].vocab = filter_u(fields["tgt"].vocab,vocab_size=tgt_vocab_size)
