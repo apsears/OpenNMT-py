@@ -43,7 +43,7 @@ def model_opts(parser):
                        embedding sizes will be set to N^feat_vec_exponent
                        where N is the number of values the feature takes.""")
 
-    # Encoder-Deocder Options
+    # Encoder-Decoder Options
     group = parser.add_argument_group('Model- Encoder-Decoder')
     group.add_argument('-model_type', default='text',
                        help="""Type of source model to use. Allows
@@ -112,6 +112,10 @@ def model_opts(parser):
                        help='Train a coverage attention layer.')
     group.add_argument('-lambda_coverage', type=float, default=1,
                        help='Lambda value for coverage.')
+
+    group = parser.add_argument_group('Model- Translation bolt-on')
+    group.add_argument('-tmodel', default=None,
+                       help='Path to translation model .pt file')
 
 
 def preprocess_opts(parser):
@@ -248,10 +252,10 @@ def train_opts(parser):
     group.add_argument('-fix_word_vecs_dec',
                        action='store_true',
                        help="Fix word embeddings on the encoder side.")
-
-    group = parser.add_argument_group('Extensions')
-    group.add_argument('-bolt_model', type=str, default="",
-                       help='Model to bolt onto Encoder-Decoder')
+    #
+    # group = parser.add_argument_group('Extensions')
+    # group.add_argument('-bolt_model', type=str, default="",
+    #                    help='Model to bolt onto Encoder-Decoder')
 
     # Optimization options
     group = parser.add_argument_group('Optimization- Type')
@@ -355,14 +359,14 @@ def train_opts(parser):
 
 def translate_opts(parser):
     group = parser.add_argument_group('Model')
-    group.add_argument('-model', required=True,
-                       help='Path to model .pt file')
+    group.add_argument('-tmodel', required=False, default=None,
+                       help='Path to translation model .pt file')
 
     group = parser.add_argument_group('Data')
     group.add_argument('-data_type', default="text",
                        help="Type of the source input. Options: [text|img].")
 
-    group.add_argument('-src',   required=True,
+    group.add_argument('-src',   required=False,
                        help="""Source sequence to decode (one line per
                        sequence)""")
     group.add_argument('-src_dir',   default="",

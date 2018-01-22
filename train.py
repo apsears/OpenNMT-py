@@ -298,6 +298,8 @@ def build_model(model_opt, opt, fields, checkpoint):
 # Build a static translator
 def build_translator(opt, model, fields, model_opt):
 
+    opt.cuda = opt.gpu > -1
+
     scorer = onmt.translate.GNMTGlobalScorer(opt.alpha, opt.beta)
     translator = onmt.translate.Translator(model, fields,
                                            beam_size=opt.beam_size,
@@ -308,7 +310,7 @@ def build_translator(opt, model, fields, model_opt):
                                            cuda=opt.cuda,
                                            beam_trace=opt.dump_beam != "",
                                            min_length=opt.min_length)
-    for param in translator.parameters():
+    for param in translator.model.parameters():
         param.requires_grad = False
     return translator, scorer
 
@@ -353,6 +355,7 @@ def main():
         # I don't like reassigning attributes of opt: it's not clear.
         opt.start_epoch = checkpoint['epoch'] + 1
     else:
+        print('Not loading checkpoint')
         checkpoint = None
         model_opt = opt
 
@@ -364,6 +367,8 @@ def main():
 
     # Build model.
     model = build_model(model_opt, opt, fields, checkpoint)
+    # ^Has been edited to use only src vocab, if model_bolt is not None
+
     tally_parameters(model)
     check_save_model_path()
 
@@ -371,15 +376,46 @@ def main():
     optim = build_optim(model, checkpoint)
 
     # Build static translator. [not all correct?]
-    dummy_parser = argparse.ArgumentParser(description='train.py')
-    dummy_opt = dummy_parser.parse_known_args([])[0]
-    tfields, tmodel, model_opt = \
-        onmt.ModelConstructor.load_test_model(opt, dummy_opt.__dict__)
-    translator = build_translator(opt, tmodel, tfields, model_opt)
+    # args = argparse.Namespace()
+    d = vars(opt)
+    print('Building static translator', d)
+    translator = None
+
+    if opt.tmodel is not None:
+
+        dummy_parser = argparse.ArgumentParser(description='train.py')
+        # opts.translate_opts(dummy_parser)
+        dummy_opt = dummy_parser.parse_known_args([])[0]
+        # opts.model_opts(dummy_parser)
+        # opts.translate_opts(dummy_parser)
+        # topt = dummy_parser.parse_known_args()
+
+        tparser = argparse.ArgumentParser(
+            description='translate.py',
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        opts.add_md_help_argument(tparser)
+        # opts.train_opts(tparser)
+        # opts.model_opts(tparser)
+        opts.translate_opts(tparser)
+
+        topt = tparser.parse_known_args([])[0] # ignore extra params
+
+        # print('Tparser: model', topt.model, topt.model_type)
+
+        print('load_static_model')
+        tfields, tmodel, tmodel_opt = \
+            onmt.ModelConstructor.load_static_model(topt, opt,  dummy_opt.__dict__) #  dummy_opt.__dict__
+        print('build_translator')
+        translator, scorer = build_translator(topt, tmodel, tfields, tmodel_opt)
+
+        # tmodel = build_model(model_opt, opt, fields, checkpoint)
+        # tfields = load_fields(train_dataset, valid_dataset, checkpoint)
+        #
+        # translator = build_translator(opt, tmodel, tfields, model_opt)
 
     # Do training.
-    train_model(model, train_dataset, valid_dataset, fields, optim, model_opt, translator)
-
+    print('Starting training')
+    train_model(model, train_dataset, valid_dataset, fields, optim, model_opt, translator=translator)
 
 if __name__ == "__main__":
     main()

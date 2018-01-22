@@ -152,7 +152,7 @@ class Trainer(object):
                     self.model(src, tgt, src_lengths, dec_state)
 
                 if self.translator is not None:
-                    outputs = self.translator(intermed)
+                    outputs = self.translator.model(intermed)
                 else:
                     outputs = intermed
 

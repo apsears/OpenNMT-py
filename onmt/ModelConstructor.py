@@ -110,7 +110,7 @@ def make_decoder(opt, embeddings):
 
 
 def load_test_model(opt, dummy_opt):
-    checkpoint = torch.load(opt.model,
+    checkpoint = torch.load(opt.tmodel,
                             map_location=lambda storage, loc: storage)
     fields = onmt.io.load_fields_from_vocab(
         checkpoint['vocab'], data_type=opt.data_type)
@@ -125,6 +125,30 @@ def load_test_model(opt, dummy_opt):
     model.eval()
     model.generator.eval()
     return fields, model, model_opt
+
+def load_static_model(topt, opt, dummy_opt):
+
+
+    for arg in dummy_opt:
+        if arg not in opt:
+            opt.__dict__[arg] = dummy_opt[arg]
+
+    checkpoint = torch.load(opt.tmodel,
+                            map_location=lambda storage, loc: storage)
+    fields = onmt.io.load_fields_from_vocab(
+        checkpoint['vocab'], data_type="text")
+
+    model_opt = checkpoint['opt']
+    for arg in dummy_opt:
+        if arg not in model_opt:
+            model_opt.__dict__[arg] = dummy_opt[arg]
+
+    model = make_base_model(model_opt, fields,
+                            use_gpu(opt), checkpoint)
+    model.eval()
+    model.generator.eval()
+    return fields, model, model_opt
+
 
 
 def make_base_model(model_opt, fields, gpu, checkpoint=None):
@@ -162,8 +186,14 @@ def make_base_model(model_opt, fields, gpu, checkpoint=None):
                                model_opt.window_size)
 
     # Make decoder.
-    tgt_dict = fields["tgt"].vocab
-    feature_dicts = onmt.io.collect_feature_vocabs(fields, 'tgt')
+
+    if model_opt.tmodel is not None: # XXXX if bolt_model, we require vocab is src-src
+        tgt_dict = fields["src"].vocab
+        feature_dicts = onmt.io.collect_feature_vocabs(fields, 'src')
+    else:
+        tgt_dict = fields["tgt"].vocab
+        feature_dicts = onmt.io.collect_feature_vocabs(fields, 'tgt')
+
     tgt_embeddings = make_embeddings(model_opt, tgt_dict,
                                      feature_dicts, for_encoder=False)
 
@@ -183,15 +213,16 @@ def make_base_model(model_opt, fields, gpu, checkpoint=None):
     model.model_type = model_opt.model_type
 
     # Make Generator.
+    # replaced fields["tgt"].vocab with tgt_dict, for generality when using bolt_model
     if not model_opt.copy_attn:
         generator = nn.Sequential(
-            nn.Linear(model_opt.rnn_size, len(fields["tgt"].vocab)),
+            nn.Linear(model_opt.rnn_size, len(tgt_dict)),
             nn.LogSoftmax())
         if model_opt.share_decoder_embeddings:
             generator[0].weight = decoder.embeddings.word_lut.weight
     else:
         generator = CopyGenerator(model_opt.rnn_size,
-                                  fields["tgt"].vocab)
+                                  tgt_dict)
 
     # Load the model states from checkpoint or initialize them.
     if checkpoint is not None:
